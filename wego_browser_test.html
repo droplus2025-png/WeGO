@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WeGo — IndexedDB test</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="wego_rules.js"></script>
+<script src="wego_schema.js"></script>
+<script src="wego_store.js"></script>
+<script src="wego_catalog.js"></script>
+<script src="wego_engine.js"></script>
+</head>
+<body style="font:15px/1.6 system-ui,sans-serif;padding:16px">
+<h3>WeGo — IndexedDB test (database + engine)</h3>
+<pre id="out">running…</pre>
+<script>
+(async () => {
+  const out = [];
+  const results = { passed: 0, failed: 0 };
+  const check = (name, cond) => { console.log((cond ? 'ok ' : 'FAIL ') + name); (cond ? results.passed++ : results.failed++); out.push((cond ? 'ok   ' : 'FAIL ') + name); };
+  try {
+    const { schema } = WeGo;
+    const dbName = 'wego_test_' + Date.now();
+    const store = await new WeGo.store.IdbStore(schema, dbName).open();
+    const cat = await new WeGo.catalog.Catalog(store).init();
+
+    check('seed categories', (await cat.listCategories()).length === 7);
+
+    const a = await cat.createProduct({ category_id: 'E', name: 'Prise', sell_cents: 2500, buy_cents: 1500 });
+    const b = await cat.createProduct({ category_id: 'E', name: 'Fiche', sell_cents: 900 });
+    check('numbering E1, E2', a.sku === 'E1' && b.sku === 'E2');
+    check('findBySku (index)', (await cat.findBySku('e2')).id === b.id);
+
+    await cat.softDelete(a.id);
+    check('smallest free number reused', (await cat.createProduct({ category_id: 'E', name: 'Neuve', sell_cents: 1 })).sku === 'E1');
+
+    const moved = await cat.moveCategory(b.id, 'S');
+    check('moveCategory', moved.sku === 'S1');
+
+    const par = await Promise.all([1, 2, 3, 4, 5].map((i) => cat.createProduct({ category_id: 'M', name: 'p' + i, sell_cents: 1 })));
+    check('parallel creations are distinct', new Set(par.map((p) => p.sku)).size === 5);
+
+    let threw = false;
+    try {
+      await store.tx(['products'], 'readwrite', async (tx) => { await tx.put('products', { id: 'tmp', sku: 'X' }); throw new Error('boom'); });
+    } catch (e) { threw = true; }
+    check('rollback on error', threw && (await store.tx(['products'], 'readonly', (tx) => tx.get('products', 'tmp'))) === undefined);
+
+    const log = await store.tx(['audit_log'], 'readonly', (tx) => tx.byIndex('audit_log', 'entity', ['product', b.id]));
+    check('composite index (audit by entity)', log.length === 2 && log.map((l) => l.action).sort().join() === 'category_moved,product_created');
+
+    const ret = await cat.checkReturnLine({ product_id: a.id, sku: 'E1', name: 'Prise', list_price_cents: 2500, unit_cost_cents: 1500 });
+    check('return check on a deleted product', ret.status === 'deleted');
+
+    // ---- engine on real IndexedDB ----
+    const eng = new WeGo.engine.Engine(store, cat, { dayOf: () => '2026-11-20' });
+    const prod = await cat.createProduct({ category_id: 'O', name: 'Marteau', sell_cents: 5000, buy_cents: 3000, qty: 1000 });
+    const sale = await eng.sale({ lines: [{ product_id: prod.id, qty: 300, unit_price_cents: 5000 }], paid_cents: 5000, customer: { name: 'Ali', phone: '0612345678' } });
+    check('engine: sale total, due and number', sale.invoice.total_cents === 15000 && sale.invoice.due_cents === 10000 && sale.invoice.number === '61120001');
+    check('engine: stock decreased', (await cat.getProduct(prod.id)).qty === 700);
+
+    let blocked = null;
+    await cat.updateProduct(prod.id, { sell_cents: 5500 });
+    try { await eng.returnFromCustomer({ original_invoice_id: sale.invoice.id, items: [{ line_id: sale.lines[0].id, qty: 100 }] }); }
+    catch (e) { blocked = e.code; }
+    check('engine: changed product blocks the return', blocked === 'RETURN_NEEDS_RESOLUTION');
+    check('engine: rollback left stock untouched', (await cat.getProduct(prod.id)).qty === 700);
+
+    const back = await eng.returnFromCustomer({ original_invoice_id: sale.invoice.id, items: [{ line_id: sale.lines[0].id, qty: 100, resolution: { action: 'adapt', product_id: prod.id } }] });
+    check('engine: return reduces the debt first', back.debt_reduced_cents === 5000 && back.cash_cents === 0);
+
+    const many = await Promise.all([1, 2, 3, 4].map(() => eng.quickSale({ total_cents: 1000 })));
+    check('engine: concurrent quick sales get distinct numbers', new Set(many.map((r) => r.invoice.number)).size === 4);
+
+    await eng.receivePayment({ customer_id: sale.invoice.party_id, amount_cents: 5000 });
+    check('engine: payment settles the debt', (await eng.debtSummary('customer')).length === 0);
+    const day = await eng.dailyReport('2026-11-20');
+    check('engine: daily report', day.sales_count === 5 && day.returns_cents === 5000);
+    check('engine: integrity', (await eng.checkIntegrity()).length === 0);
+
+    // reopen: data must persist
+    store.db.close();
+    const store2 = await new WeGo.store.IdbStore(schema, dbName).open();
+    const cat2 = await new WeGo.catalog.Catalog(store2).init();
+    check('data persists after reopening', (await cat2.findBySku('S1')).id === b.id);
+    store2.db.close();
+    indexedDB.deleteDatabase(dbName);
+  } catch (e) {
+    results.failed++; out.push('FAIL exception: ' + (e && e.stack || e));
+  }
+  out.push('', results.passed + ' passed, ' + results.failed + ' failed');
+  document.getElementById('out').textContent = out.join('\n');
+  window.__results = results;
+  document.title = 'done ' + results.passed + '/' + (results.passed + results.failed);
+})();
+</script>
+</body>
+</html>
