@@ -8,7 +8,7 @@
 
   const rules = typeof require !== 'undefined' ? require('./wego_rules.js') : root.WeGo.rules;
   const schema = typeof require !== 'undefined' ? require('./wego_schema.js') : root.WeGo.schema;
-  const { WeGoError } = rules;
+  const { WeGoError, normalizeText } = rules;
 
   const SCALE = schema.qtyScale;
   const MAX_PARKED = 5;
@@ -102,7 +102,7 @@
     return { price, qty };
   }
 
-  const fresh = (ref) => ({ mode: null, expr: '', result: null, lines: [], ref, query: { letter: '', digits: '', picked: false } });
+  const fresh = (ref) => ({ mode: null, expr: '', result: null, lines: [], ref, query: { letter: '', digits: '', picked: false, text: '' } });
   const isEmpty = (c) => c.lines.length === 0 && c.expr === '';
 
   /* What the employee is most likely to do next. The screen highlights the matching button.
@@ -116,7 +116,7 @@
       return { action: s.needs_confirm ? 'confirm' : 'pay' };
     }
     if (s.results.length) return { action: 'pick_result', single: s.results.length === 1 ? s.results[0].id : null };
-    if (s.query.digits) return { action: 'no_match' };
+    if (s.query.digits || s.query.text) return { action: 'no_match' };
     return { action: s.lines.length ? 'pay' : 'search' };
   }
 
@@ -193,6 +193,9 @@
       return { count: open.length, total_cents: open.reduce((sum, i) => sum + i.total_cents, 0) };
     }
 
+    /* Resolves when every queued operation has finished. */
+    idle() { return this._q; }
+
     _run(fn) {
       const p = this._q.then(async () => {
         this.hint = null;
@@ -243,7 +246,7 @@
         if (!['calc', 'quick', 'detailed'].includes(mode)) throw new WeGoError('INVALID_MODE', 'Unknown mode');
         if (mode === this.cur.mode) return;
         if (this.cur.lines.length || this.cur.expr) throw new WeGoError('MODE_LOCKED', 'Park or clear the invoice before changing the mode');
-        this.cur.mode = mode; this.cur.result = null; this.cur.query = { letter: '', digits: '', picked: false };
+        this.cur.mode = mode; this.cur.result = null; this.cur.query = { letter: '', digits: '', picked: false, text: '' };
         await this._refreshResults();
       });
     }
@@ -316,9 +319,9 @@
     /* ---------- detailed mode: search by number ---------- */
     async _pressDetailed(k) {
       const q = this.cur.query;
-      if (/^[0-9]$/.test(k)) { if (q.digits.length < 6) q.digits += k; } else if (k === '⌫') {
+      if (/^[0-9]$/.test(k)) { q.text = ''; if (q.digits.length < 6) q.digits += k; } else if (k === '⌫') {
         if (q.digits) q.digits = q.digits.slice(0, -1); else { q.letter = ''; q.picked = false; }
-      } else if (k === 'C') { q.digits = ''; q.letter = ''; q.picked = false; } else return;
+      } else if (k === 'C') { q.digits = ''; q.letter = ''; q.picked = false; q.text = ''; } else return;
       await this._refreshResults();
     }
 
@@ -327,14 +330,34 @@
         if (this.cur.mode !== 'detailed') { this.hint = 'NOT_AVAILABLE'; return; }
         this.cur.query.letter = letter === '#' ? '' : String(letter).toUpperCase();
         this.cur.query.picked = true;
+        this.cur.query.text = '';
         await this._refreshResults();
       });
+    }
+
+    _toResult(p) {
+      return {
+        id: p.id, sku: p.sku, name: p.name, price: p.sell_cents, qty: p.qty, buy: p.buy_cents,
+        margin_cents: p.sell_cents - p.buy_cents,
+        margin_pct: p.sell_cents > 0 ? Math.round(((p.sell_cents - p.buy_cents) / p.sell_cents) * 1000) / 10 : null,
+      };
     }
 
     async _refreshResults() {
       const { mode, query } = this.cur;
       this.results = [];
-      if (mode !== 'detailed' || (query.letter === '' && query.digits === '' && !query.picked)) return;
+      if (mode !== 'detailed') return;
+      if (query.text) {
+        const n = normalizeText(query.text);
+        const all = await this.store.tx(['products'], 'readonly', (tx) => tx.all('products'));
+        this.results = all
+          .filter((p) => !p.is_deleted && (p.name_norm.includes(n) || p.sku.toLowerCase() === n))
+          .sort((x, y) => x.name_norm.indexOf(n) - y.name_norm.indexOf(n) || x.name_norm.length - y.name_norm.length)
+          .slice(0, 50)
+          .map((p) => this._toResult(p));
+        return;
+      }
+      if (query.letter === '' && query.digits === '' && !query.picked) return;
       const cats = await this.cat.listCategories();
       const category = cats.find((x) => x.prefix === query.letter);
       if (!category) return;
@@ -342,13 +365,18 @@
       const wanted = query.digits;
       this.results = list
         .filter((p) => wanted === '' || String(p.sku_num).startsWith(wanted))
-        .sort((a, b) => (String(a.sku_num) === wanted ? -1 : 0) - (String(b.sku_num) === wanted ? -1 : 0) || a.sku_num - b.sku_num)
+        .sort((x, y) => (String(x.sku_num) === wanted ? -1 : 0) - (String(y.sku_num) === wanted ? -1 : 0) || x.sku_num - y.sku_num)
         .slice(0, 50)
-        .map((p) => ({
-          id: p.id, sku: p.sku, name: p.name, price: p.sell_cents, qty: p.qty, buy: p.buy_cents,
-          margin_cents: p.sell_cents - p.buy_cents,
-          margin_pct: p.sell_cents > 0 ? Math.round(((p.sell_cents - p.buy_cents) / p.sell_cents) * 1000) / 10 : null,
-        }));
+        .map((p) => this._toResult(p));
+    }
+
+    /* Search by name (the keyboard is only needed here, when the number is forgotten). */
+    searchText(text) {
+      return this._run(async () => {
+        if (this.cur.mode !== 'detailed') { this.hint = 'NOT_AVAILABLE'; return; }
+        this.cur.query = { letter: '', digits: '', picked: false, text: String(text || '').trim() };
+        await this._refreshResults();
+      });
     }
 
     addProduct(id) {
@@ -360,7 +388,7 @@
         const same = this.cur.lines.find((l) => l.product_id === p.id && l.price === p.sell_cents);
         if (same) same.qty += SCALE;
         else this.cur.lines.push({ product_id: p.id, sku: p.sku, name: p.name, qty: SCALE, price: p.sell_cents, list: p.sell_cents, cost: p.buy_cents, generic: false, confirmed: true });
-        this.cur.query = { letter: '', digits: '', picked: false };
+        this.cur.query = { letter: '', digits: '', picked: false, text: '' };
         await this._refreshResults();
       });
     }

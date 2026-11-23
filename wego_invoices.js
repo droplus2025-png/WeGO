@@ -23,12 +23,12 @@
   ];
   const FIELD = { sku: 'الرمز', name: 'الاسم', sell_cents: 'سعر البيع', buy_cents: 'سعر الشراء' };
 
-  function open() {
+  function open(preset) {
     const ui = W.ui;
     const { ask, toast, fail, esc, money, plain, cents, buzz } = ui;
     const $ = (s) => document.querySelector(s);
-    const sc = ui.showScreen('الفواتير');
-    let filter = FILTERS[0];
+    const sc = ui.showScreen(preset ? (preset === 'sale' ? 'إرجاع من زبون — اختر الفاتورة' : 'إرجاع للمورد — اختر الفاتورة') : 'الفواتير');
+    let filter = FILTERS.find((f) => f[0] === preset) || FILTERS[0];
     let current = null;       // { invoice, lines }
     let settings = {};
 

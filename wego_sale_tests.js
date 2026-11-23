@@ -456,6 +456,26 @@ test('pending details: quick invoices waiting for their details are counted', as
   assert.equal((await sale.pendingDetails()).count, 0);
 });
 
+/* ---------- 9. search by name (the only place the keyboard is needed) ---------- */
+test('search by name: accents and case are ignored, a single hit is pointed out, typing digits clears the text', async () => {
+  const { sale, e5 } = await detailed();
+  let st = await sale.searchText('CABLE');
+  assert.deepEqual(st.results.map((r) => r.sku), ['E5']);
+  assert.deepEqual(st.next, { action: 'pick_result', single: e5.id });
+  st = await sale.searchText('pri');
+  assert.deepEqual(st.results.map((r) => r.sku), ['E4']);
+  assert.equal((await sale.searchText('zzz')).next.action, 'no_match');
+  await sale.searchText('vis');
+  st = await sale.press('4');
+  assert.equal(st.query.text, ''); assert.deepEqual(st.results.map((r) => r.sku), ['4', '40']);
+  assert.equal((await quick()).sale.searchText('x') instanceof Promise, true);
+  const q = await quick();
+  assert.equal((await q.sale.searchText('x')).hint, 'NOT_AVAILABLE');
+  await sale.searchText('fiche');
+  assert.equal((await sale.addProduct((await sale.searchText('fiche')).results[0].id)).lines[0].sku, 'E40');
+  assert.equal(sale.state().query.text, '');
+});
+
 (async () => {
   for (const { name, fn } of queue) {
     try { await fn(); passed += 1; console.log('  ok   ' + name); } catch (e) {
