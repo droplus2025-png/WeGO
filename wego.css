@@ -1,0 +1,108 @@
+/* wego.css — one design system. Sizes use rem, and rem follows the screen width, so the same layout fits
+   1366×768 up to 2560×1440 and any Windows scaling. Palette = the logo: deep blue + lime green. */
+:root{
+  --bg:#06122e;--panel:#0d2150;--key:#17327a;--line:#254199;--text:#f1f6ff;--mut:#9db3e6;
+  --lime:#9be21b;--gold:#9be21b;--ok:#16a34a;--warn:#f59e0b;--bad:#e11d48;--info:#2563eb;--vio:#7c3aed;
+  --font:system-ui,"Segoe UI",Tahoma,sans-serif;
+}
+html{font-size:clamp(14px,.95vw + 4px,22px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font:1rem/1.4 var(--font)}
+body{display:grid;gap:.5rem;padding:.5rem;grid-template-columns:11.5rem minmax(0,1fr);grid-template-rows:3.6rem minmax(0,1fr);grid-template-areas:"top top" "menu view"}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums}
+input,textarea{font:1rem var(--font)}
+[hidden]{display:none!important}
+
+/* ---------- shell: the fixed green part ---------- */
+#top{grid-area:top;display:flex;align-items:center;gap:.8rem;background:var(--panel);border-radius:.9rem;padding:0 .9rem;border-bottom:.2rem solid var(--lime)}
+#logo{width:2.6rem;height:2.6rem;border-radius:.6rem;object-fit:contain}
+#top b{font-size:1.3rem}#date{color:var(--mut)}.sp{flex:1}
+#menu{grid-area:menu;display:flex;flex-direction:column;gap:.4rem;min-height:0}
+#menu .b{flex:1;text-align:right;font-size:1rem;min-height:2.4rem}
+#menu .on{outline:.18rem solid var(--lime)}
+#view{grid-area:view;min-height:0;min-width:0;display:flex;flex-direction:column;gap:.5rem;overflow:hidden}
+
+/* ---------- buttons ---------- */
+.b{border:0;border-radius:.75rem;min-height:2.8rem;padding:0 .8rem;font:700 1rem var(--font);color:#fff;background:var(--key);cursor:pointer;transition:transform .06s,filter .06s}
+.b:active{transform:scale(.93);filter:brightness(1.35)}
+.b:disabled{opacity:.3;pointer-events:none}
+.pay{background:var(--ok)!important}.go{background:var(--warn)!important;color:#111!important}.del{background:var(--bad)!important}
+.op{background:var(--info)!important}.at{background:var(--vio)!important}.ghost{background:var(--panel)!important;border:.12rem solid var(--line)}
+.sel{outline:.2rem solid #fff}
+.next{animation:pulse 1.2s ease-in-out infinite;box-shadow:0 0 0 .2rem var(--lime)}
+@keyframes pulse{50%{box-shadow:0 0 0 .5rem rgba(155,226,27,.25);filter:brightness(1.25)}}
+
+/* ---------- sale screen ---------- */
+.sale{display:grid;grid-template-rows:auto minmax(0,1fr);gap:.5rem;flex:1;min-height:0}
+.cats{display:flex;gap:.4rem}
+.cats .b{flex:1;min-height:3.2rem;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;padding:0 .3rem}
+.cats .b i{font:900 1.35rem var(--font);font-style:normal}.cats .b small{font-size:.75rem;opacity:.9}
+.sale-main{display:grid;grid-template-columns:minmax(0,1fr) minmax(15rem,27%);gap:.5rem;min-height:0}
+.work{display:grid;grid-template-rows:auto minmax(0,1fr);gap:.5rem;min-height:0}
+.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem}
+.modes .b{min-height:3.2rem;font-size:1.1rem;background:var(--key)}
+.work-body{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:.5rem;min-height:0}
+.panel{background:var(--panel);border-radius:.9rem;padding:.5rem;display:flex;flex-direction:column;gap:.45rem;min-height:0}
+.inv-head{display:flex;gap:.35rem;align-items:center;flex-wrap:wrap}.inv-head .b{min-height:2.3rem;padding:0 .6rem}
+.badge{background:var(--warn)!important;color:#111!important;min-height:2.3rem}
+.lines{flex:1;overflow-y:auto;min-height:0}
+.ln{display:flex;align-items:center;gap:.5rem;padding:.45rem .3rem;border-bottom:.06rem solid var(--line)}
+.ln .n{width:1.3rem;color:var(--mut)}.ln .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ln .t{min-width:4.6rem;text-align:left;font-weight:800}.ln .x{min-height:2.1rem;width:2.1rem;padding:0;background:var(--bad)}
+.ln .q,.ln .p{padding:.15rem .5rem;border-radius:.5rem;background:#071a45;cursor:pointer;min-width:3rem;text-align:center}
+.ln .st{min-height:2rem;width:2rem;padding:0}
+.ln.gen .nm{color:var(--warn)}.ln.loss{background:rgba(225,29,72,.18)}.ln.zero{outline:.12rem solid var(--bad)}
+.chip{font-size:.75rem;padding:.05rem .4rem;border-radius:.6rem;background:#0b5a2b}.chip.neg{background:#8c1230}
+.confirm{display:flex;gap:.5rem;align-items:center;background:#1a3a8f;border-radius:.7rem;padding:.4rem .6rem;font-size:.85rem}.confirm .b{min-height:2.4rem}
+.inv-foot{display:flex;align-items:center;gap:.6rem}
+#s-total{flex:1;font:900 2rem var(--font);color:var(--lime);text-align:left}
+#s-pay{min-width:9rem;min-height:3.6rem;font-size:1.4rem}
+.disp{background:#04102b;border-radius:.7rem;padding:.3rem .8rem;min-height:3.6rem;display:flex;align-items:center}
+#s-expr{flex:1;font:700 2.2rem var(--font);text-align:left;color:var(--lime);overflow-x:auto;white-space:nowrap}
+#s-expr.dim{color:var(--line)}
+.hint{min-height:1.3rem;color:var(--mut);font-size:.9rem}
+.keys{flex:1;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;gap:.4rem;min-height:0}
+.keys .b{min-height:0;font-size:1.7rem}.keys .zero{grid-column:span 2}.keys .eq{background:var(--ok)}
+.find{min-height:0}
+.searchbar{display:flex;gap:.4rem}.searchbar input{flex:1;min-width:0;background:#04102b;border:.12rem solid var(--line);border-radius:.7rem;color:var(--text);padding:.5rem .7rem;user-select:text}
+.searchbar input:focus,.searchbar input.next{outline:0;border-color:var(--lime)}
+.results{flex:1;overflow-y:auto;min-height:0}
+.pending{color:var(--warn);font-size:.85rem;cursor:pointer}
+
+/* ---------- lists and tables shared by the other screens ---------- */
+.pn{background:var(--panel);border-radius:.9rem;padding:.5rem;display:flex;flex-direction:column;gap:.5rem;min-height:0;flex:1}
+.pn .list,.list{flex:1;overflow-y:auto;min-height:0}
+.r{display:flex;align-items:center;gap:.5rem;padding:.55rem .35rem;border-bottom:.06rem solid var(--line);cursor:pointer}
+.r:active{background:var(--key)}.r .s{min-width:3rem;font-weight:900;color:var(--lime)}.r .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.r .p{font-weight:800}.r small{color:var(--mut);font-size:.75rem}.r.new{color:#f0abfc;font-weight:700}.r.zero small.q{color:#fb7185}
+.tb{display:grid;grid-template-columns:8% 10% 42% 14% 14% 12%;gap:.25rem;align-items:center;padding:.55rem .35rem;border-bottom:.06rem solid var(--line)}
+.tb.h{color:var(--mut);font-size:.8rem}.tb [data-f]{cursor:pointer}.tb .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tb .red{color:#fb7185;font-weight:700}.tb .s{color:var(--lime);font-weight:900}
+.mini{display:flex;gap:.4rem;overflow-x:auto}.mini .b{min-height:2.4rem;min-width:4rem}
+#sh{display:flex;align-items:center;gap:.6rem;background:var(--panel);border-radius:.9rem;padding:.4rem .7rem;border-bottom:.15rem solid var(--lime)}
+#sh b{flex:1;font-size:1.2rem}#sact{display:flex;gap:.4rem}#sbody{display:flex;gap:.5rem;min-height:0;flex:1}
+
+/* ---------- dialogs (top half of the screen: nothing hides them behind a keyboard) and toast ---------- */
+dialog{background:var(--panel);color:var(--text);border:.12rem solid var(--lime);border-radius:1rem;padding:1rem;width:min(92vw,26rem);margin:3vh auto auto}
+dialog::backdrop{background:#000a}dialog h3{margin:0 0 .6rem;color:var(--lime)}
+dialog label{display:block;margin:.5rem 0;color:var(--mut);font-size:.9rem}
+dialog input,dialog textarea{display:block;width:100%;margin-top:.25rem;background:#04102b;border:.12rem solid var(--line);border-radius:.6rem;color:var(--text);padding:.55rem;user-select:text}
+dialog .row{display:flex;gap:.5rem;margin-top:.9rem}dialog .row .b{flex:1}
+.big{font:900 2.4rem var(--font);text-align:center;color:var(--lime)}
+.pad4{display:grid;grid-template-columns:repeat(4,1fr);gap:.35rem;margin-top:.5rem}.pad4 .b{min-height:3rem;font-size:1.4rem}
+.shown{background:#04102b;border-radius:.6rem;padding:.4rem .8rem;font:800 1.8rem var(--font);text-align:left;min-height:3rem}
+.chips{display:flex;gap:.35rem;flex-wrap:wrap;margin:.3rem 0}.chips .b{min-height:2.2rem;padding:0 .6rem;font-size:.85rem}
+#toast{position:fixed;inset:4.6rem 0 auto 0;margin:auto;width:max-content;max-width:90vw;background:#0a1b45;border:.12rem solid var(--lime);padding:.6rem 1.2rem;border-radius:.8rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:10}
+#toast.show{opacity:1}#toast.err{border-color:var(--bad)}
+
+/* ---------- the phone: same screens in one column (secondary device) ---------- */
+@media(max-width:900px){
+  html{font-size:15px}
+  body{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:"top" "menu" "view";height:auto;min-height:100%;overflow-y:auto}
+  #menu{flex-direction:row;overflow-x:auto}#menu .b{flex:none;min-height:2.4rem;white-space:nowrap}
+  #view{overflow:visible}
+  .sale-main,.work-body{grid-template-columns:minmax(0,1fr)}
+  .cats{overflow-x:auto}.cats .b{min-width:4.6rem}
+  .keys{min-height:19rem}.lines{min-height:9rem}.results{min-height:12rem}
+  #sbody{flex-direction:column}.pn{flex:none;min-height:18rem}
+}

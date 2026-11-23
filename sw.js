@@ -1,9 +1,9 @@
 /* sw.js — offline support: the app shell is cached; pages are served from the cache and refreshed in the background.
    Bump CACHE when you publish a new version so old files are dropped. */
-const CACHE = 'wego-v1';
+const CACHE = 'wego-v2';
 const FILES = [
-  './', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './logo.png', './wego-logo.png',
-  './wego_rules.js', './wego_schema.js', './wego_store.js', './wego_catalog.js', './wego_engine.js', './wego_sale.js',
+  './', './index.html', './manifest.json', './wego.css', './icon-192.png', './icon-512.png', './logo.png', './wego-logo.png',
+  './wego_rules.js', './wego_schema.js', './wego_store.js', './wego_catalog.js', './wego_engine.js', './wego_sale.js', './wego_ui.js', './wego_shell.js', './wego_sale_screen.js',
   './wego_purchase.js', './wego_stock.js', './wego_invoices.js', './wego_debts.js', './wego_cash.js', './wego_admin.js',
 ];
 
